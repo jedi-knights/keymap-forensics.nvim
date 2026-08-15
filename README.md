@@ -1,12 +1,29 @@
 # keymap-forensics.nvim
 
-Runtime diagnosis for `:map` chaos. `:WhyKey <lhs>` answers "who bound
-this key?" — including which script and line, and (for `<Plug>` chains)
-what the mapping actually does under the hood.
+[![CI](https://github.com/jedi-knights/keymap-forensics.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/jedi-knights/keymap-forensics.nvim/actions/workflows/ci.yml)
 
-Complements [`plug-audit`](https://github.com/jedi-knights/plug-audit):
-plug-audit checks plugin repos statically; keymap-forensics checks the
-running editor dynamically.
+You pressed `<leader>ff` expecting Telescope. You got something you don't
+recognize. Which of your 40 plugins bound this key — and what did the
+previous binding do?
+
+`keymap-forensics.nvim` answers those questions from a running Neovim.
+`:WhyKey <lhs>` names the script and line that bound a key (chasing one
+`<Plug>` hop to reveal what it actually does). `:WhyKeyConflicts` scans
+every mode for shadowing-prefix collisions — the mappings whose lhs
+blocks longer sequences and forces a `timeoutlen` wait.
+
+**Requirements:** Neovim 0.10+. Source-path resolution uses `getscriptinfo()`; older Neovim still runs `:WhyKey`, it just degrades to a script id instead of a filename.
+
+**Status:** pre-v0.1.0. Public API is expected to stabilize with the v0.1.0 tag; treat as experimental until then.
+
+## Relationship to plug-audit
+
+Sibling tool: [`plug-audit`](https://github.com/jedi-knights/plug-audit)
+lints plugin *repositories* at rest (augroup hygiene, optional-peer
+handling, health-check presence, keymap conventions, etc.).
+`keymap-forensics` inspects the *running editor* — the state that
+emerges after every plugin has loaded and every mapping has actually
+been set. Same mental model, different time.
 
 ## Install
 
