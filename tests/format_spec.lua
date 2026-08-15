@@ -211,4 +211,92 @@ describe("keymap-forensics.format", function()
 			assert.is_truthy(out:match("Scanned 42 mappings across 1 modes%."))
 		end)
 	end)
+
+	describe("render_trace", function()
+		it("returns an actionable message when the history is empty", function()
+			local out = format.render_trace({}, "<leader>ff", "n")
+			assert.is_truthy(out:match("no events recorded"))
+			assert.is_truthy(out:match("<leader>ff"))
+			assert.is_truthy(out:match("track"))
+		end)
+
+		it("labels the head entry 'winner' and later entries 'superseded'", function()
+			local history = {
+				{ timestamp = 100, rhs = "new", caller = { source = "a.lua", line = 1 } },
+				{ timestamp = 50, rhs = "old", caller = { source = "b.lua", line = 2 } },
+			}
+			local out = format.render_trace(history, "<leader>x", "n")
+			assert.is_truthy(out:match("#1%s+winner"))
+			assert.is_truthy(out:match("#2%s+superseded"))
+		end)
+
+		it("renders event count in the header", function()
+			local history = {
+				{ timestamp = 100, rhs = "a", caller = { source = "x", line = 1 } },
+				{ timestamp = 90, rhs = "b", caller = { source = "y", line = 2 } },
+				{ timestamp = 80, rhs = "c", caller = { source = "z", line = 3 } },
+			}
+			local out = format.render_trace(history, "<leader>x", "n")
+			assert.is_truthy(out:match("<leader>x %(n mode%) — 3 event%(s%) recorded"))
+		end)
+
+		it("renders a callback-backed event with its defined-at location", function()
+			local history = {
+				{
+					timestamp = 100,
+					has_callback = true,
+					callback_source = { source = "@plugins/telescope.lua", linedefined = 42 },
+					caller = { source = "user.lua", line = 5 },
+				},
+			}
+			local out = format.render_trace(history, "<leader>x", "n")
+			assert.is_truthy(out:match("<lua callback @ @plugins/telescope%.lua:42>"))
+		end)
+
+		it("renders a direct rhs event with its source: line", function()
+			local history = {
+				{
+					timestamp = 100,
+					rhs = ":Files<CR>",
+					caller = { source = "@config/keymaps.lua", line = 12 },
+				},
+			}
+			local out = format.render_trace(history, "<leader>ff", "n")
+			assert.is_truthy(out:match("bound to:  :Files<CR>"))
+			assert.is_truthy(out:match("source:%s+@config/keymaps%.lua:12"))
+		end)
+
+		it("appends desc line only when opts.desc is present", function()
+			local history = {
+				{ timestamp = 100, rhs = "a", opts = { desc = "Find files" }, caller = { source = "x", line = 1 } },
+				{ timestamp = 90, rhs = "b", opts = {}, caller = { source = "y", line = 2 } },
+			}
+			local out = format.render_trace(history, "<leader>x", "n")
+			assert.equals(1, select(2, out:gsub("desc:", "")))
+		end)
+
+		it("appends buffer-local scope line only when buffer_local=true", function()
+			local history = {
+				{ timestamp = 100, rhs = "a", buffer_local = true, caller = { source = "x", line = 1 } },
+				{ timestamp = 90, rhs = "b", buffer_local = false, caller = { source = "y", line = 2 } },
+			}
+			local out = format.render_trace(history, "<leader>x", "n")
+			assert.equals(1, select(2, out:gsub("scope:%s+buffer%-local", "")))
+		end)
+
+		it("rejects a non-table history at the boundary", function()
+			assert.has_error(function()
+				format.render_trace("nope", "x", "n")
+			end)
+		end)
+
+		it("rejects empty lhs or mode at the boundary", function()
+			assert.has_error(function()
+				format.render_trace({}, "", "n")
+			end)
+			assert.has_error(function()
+				format.render_trace({}, "x", "")
+			end)
+		end)
+	end)
 end)

@@ -10,6 +10,8 @@ CONTENTS                                          *keymap-forensics-contents*
   2. Commands .................... |keymap-forensics-commands|
      2.1. :WhyKey ................ |:WhyKey|
      2.2. :WhyKeyConflicts ....... |:WhyKeyConflicts|
+     2.3. :WhyKeyTrace ........... |:WhyKeyTrace|
+     2.4. :WhyKeyTraceReset ...... |:WhyKeyTraceReset|
   3. Output shape ................ |keymap-forensics-output|
   4. API ......................... |keymap-forensics-api|
   5. Health ...................... |keymap-forensics-health|
@@ -68,6 +70,52 @@ Example: >
     Scanned 187 mappings across 7 modes.
 <
 
+------------------------------------------------------------------------------
+2.3. :WhyKeyTrace                                               *:WhyKeyTrace*
+
+>
+    :WhyKeyTrace {lhs}
+    :WhyKeyTrace {mode} {lhs}
+<
+Print the recorded binding history for {lhs} in {mode} (default: `n`).
+Most-recent binding first; #1 is the current winner, #2..#N are the
+superseded bindings the winner overrode.
+
+The trace log is populated ONLY while the shim installed by
+`require("keymap-forensics").track()` is active. Mappings set before
+track() runs (including everything Vimscript `:map` produces) are not
+observable and will not appear.
+
+If the log has no events for {lhs} in {mode}, prints an actionable
+message pointing at track() as the likely fix.
+
+Example: >
+    :WhyKeyTrace <leader>ff
+    <leader>ff (n mode) — 3 event(s) recorded
+
+      #1  winner      09:00:12
+          bound to:  <cmd>Telescope find_files<CR>
+          source:    lua/plugins/telescope.lua:42
+          desc:      Find files
+
+      #2  superseded  09:00:05
+          bound to:  :Files<CR>
+          source:    lua/config/keymaps.lua:12
+
+      #3  superseded  09:00:01
+          bound to:  <cmd>fzf-lua files<CR>
+          source:    lua/plugins/fzf.lua:8
+<
+
+------------------------------------------------------------------------------
+2.4. :WhyKeyTraceReset                                     *:WhyKeyTraceReset*
+
+>
+    :WhyKeyTraceReset
+<
+Clear the trace event log. Does not uninstall the shim — new bindings
+continue to be recorded.
+
 ==============================================================================
 3. Output shape                                     *keymap-forensics-output*
 
@@ -95,7 +143,12 @@ Submodules (`require("keymap-forensics.<name>")`):
                   shape shown above. Pure; injectable deps for tests.
 - `conflicts`   — `find(deps?)` returns a per-mode prefix-collision
                   report. Pure; injectable deps for tests.
-- `format`      — `render(record)` and `render_conflicts(report)`.
+- `trace`       — `install`, `uninstall`, `record`, `history`,
+                  `reset`, `count`, `installed`. Pure record/history
+                  core; install monkey-patches an api table (default
+                  `vim.api`) so tests inject a fake.
+- `format`      — `render(record)`, `render_conflicts(report)`,
+                  `render_trace(history, lhs, mode)`.
 - `health`      — |:checkhealth| entry point.
 
 Facade (`require("keymap-forensics")`):
@@ -104,6 +157,10 @@ Facade (`require("keymap-forensics")`):
                                       raw record so callers can pipe it.
 - `why_key_conflicts(deps?)`       — scan + print. Returns the raw
                                       conflicts report.
+- `track({ max_events? })`         — install trace shim. Idempotent.
+- `untrack()`                      — restore vim.api; log preserved.
+- `reset_trace()`                  — clear the trace log.
+- `why_key_trace(lhs, mode?)`      — print history + return raw records.
 
 ==============================================================================
 5. Health                                           *keymap-forensics-health*
