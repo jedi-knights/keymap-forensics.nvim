@@ -1,0 +1,51 @@
+*keymap-forensics.txt*   Scaffolded with plug-scaffold (style: omar)
+
+Author:  Omar Crosby
+License: MIT
+
+==============================================================================
+CONTENTS                                          *keymap-forensics-contents*
+
+  1. Introduction ................ |keymap-forensics-intro|
+  2. Setup ....................... |keymap-forensics-setup|
+  3. API ......................... |keymap-forensics-api|
+  4. Health ...................... |keymap-forensics-health|
+
+==============================================================================
+1. Introduction                                      *keymap-forensics-intro*
+
+TODO: describe the plugin.
+
+==============================================================================
+2. Setup                                             *keymap-forensics-setup*
+
+setup() is optional — the plugin loads its `plugin/` entry on startup
+and defers the rest to first `require()`. Call setup only when you
+need to override defaults or inject dependencies.
+>lua
+    require("keymap-forensics").setup({
+      -- your config here
+    })
+<
+The second argument accepts injected dependencies so tests can swap
+production collaborators for fakes:
+>lua
+    require("keymap-forensics").setup({}, { notifier = fake })
+<
+
+==============================================================================
+3. API                                                 *keymap-forensics-api*
+
+Submodules:
+
+- `require("keymap-forensics").config`   — defaults and merge helper
+- `require("keymap-forensics").detector` — should_load() gate
+- `require("keymap-forensics").health`   — |:checkhealth| entry point
+
+==============================================================================
+4. Health                                           *keymap-forensics-health*
+
+Run `:checkhealth keymap-forensics` to verify the plugin loaded and
+the runtime environment is supported.
+
+ vim:tw=78:ts=8:noet:ft=help:norl:
