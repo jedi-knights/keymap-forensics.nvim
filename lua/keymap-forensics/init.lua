@@ -25,6 +25,18 @@ function M.why_key(lhs, mode, deps)
 	return record
 end
 
+--- Scan all standard modes for prefix collisions — mappings whose
+--- lhs is a strict prefix of another mapping in the same mode.
+--- Prints the formatted report to :messages and returns the raw
+--- report so callers can pipe it further.
+--- @param deps table? Injected for tests.
+--- @return table report
+function M.why_key_conflicts(deps)
+	local report = require("keymap-forensics.conflicts").find(deps)
+	print(format.render_conflicts(report))
+	return report
+end
+
 --- Optional setup for opts + DI parity with the scaffold. The plugin
 --- registers commands at load time; users may skip setup entirely.
 --- @param opts table?

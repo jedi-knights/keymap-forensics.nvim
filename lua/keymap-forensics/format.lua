@@ -57,4 +57,71 @@ function M.render(record)
 	return table.concat(lines, "\n")
 end
 
+--- Render a single shaped conflict entry as one indented line:
+---   "    <lhs>   <rhs>   (<source>)"
+--- Padding for the lhs column keeps the rhs aligned within a
+--- collision group.
+--- @param entry table Shape from conflicts.shape_entry.
+--- @param lhs_width integer Width to pad the lhs column to.
+--- @return string
+local function render_conflict_entry(entry, lhs_width)
+	local binding
+	if entry.callback then
+		binding = "<lua callback>"
+	else
+		binding = entry.rhs or "<nil>"
+	end
+
+	local source_suffix = ""
+	if entry.source then
+		if entry.source.name then
+			source_suffix = string.format("  (%s:%d)", entry.source.name, entry.source.line or 0)
+		else
+			source_suffix = string.format("  (script id %d)", entry.source.sid)
+		end
+	end
+
+	return string.format("    %-" .. lhs_width .. "s  %s%s", entry.lhs, binding, source_suffix)
+end
+
+--- Render a conflicts report (from `conflicts.find`) as a multi-line
+--- string. Every scanned mode gets a header, whether or not it has
+--- collisions — the "(no shadowing prefixes)" line proves the mode
+--- was inspected and nothing was silently filtered.
+--- @param report table? { scanned, modes = { {mode, collisions}, ... } }
+--- @return string
+function M.render_conflicts(report)
+	if report == nil then
+		return "no conflicts report"
+	end
+	assert(type(report) == "table", "format.render_conflicts: report must be a table or nil")
+
+	local out = {}
+	for _, mode_report in ipairs(report.modes or {}) do
+		table.insert(out, string.format("Prefix conflicts (%s mode):", mode_report.mode))
+		if #mode_report.collisions == 0 then
+			table.insert(out, "  none")
+		else
+			for _, collision in ipairs(mode_report.collisions) do
+				local n = #collision.shadowed
+				table.insert(out, string.format("  %s  blocks %d longer sequence(s):", collision.prefix.lhs, n))
+				local width = #collision.prefix.lhs
+				for _, entry in ipairs(collision.shadowed) do
+					if #entry.lhs > width then
+						width = #entry.lhs
+					end
+				end
+				table.insert(out, render_conflict_entry(collision.prefix, width))
+				for _, entry in ipairs(collision.shadowed) do
+					table.insert(out, render_conflict_entry(entry, width))
+				end
+			end
+		end
+		table.insert(out, "")
+	end
+	table.insert(out, string.format("Scanned %d mappings across %d modes.", report.scanned or 0, #(report.modes or {})))
+
+	return table.concat(out, "\n")
+end
+
 return M

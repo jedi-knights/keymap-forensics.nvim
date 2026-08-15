@@ -32,3 +32,9 @@ end, {
 	nargs = "+",
 	desc = "Show which script bound a key: :WhyKey [<mode>] <lhs>",
 })
+
+vim.api.nvim_create_user_command("WhyKeyConflicts", function()
+	require("keymap-forensics").why_key_conflicts()
+end, {
+	desc = "Report keymap prefix collisions across standard modes",
+})
