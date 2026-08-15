@@ -10,7 +10,9 @@ previous binding do?
 `:WhyKey <lhs>` names the script and line that bound a key (chasing one
 `<Plug>` hop to reveal what it actually does). `:WhyKeyConflicts` scans
 every mode for shadowing-prefix collisions — the mappings whose lhs
-blocks longer sequences and forces a `timeoutlen` wait.
+blocks longer sequences and forces a `timeoutlen` wait. `:WhyKeyTrace`
+opts in to a Lua-side shim that records every mapping-set event so you
+can inspect the *full history* of who bound what, in what order.
 
 **Requirements:** Neovim 0.10+. Source-path resolution uses `getscriptinfo()`; older Neovim still runs `:WhyKey`, it just degrades to a script id instead of a filename.
 
@@ -84,6 +86,63 @@ Prefix conflicts (i mode):
 
 Scanned 187 mappings across 7 modes.
 ```
+
+### `:WhyKeyTrace [<mode>] <lhs>` *(opt-in)*
+
+Historical binding tracker. Answers "who bound this key first, and who
+overrode them?" — the question `:WhyKey` cannot answer because the
+loser is gone by the time you look.
+
+Add `require("keymap-forensics").track()` to your init.lua **before**
+any plugin whose keymaps you want to observe. The shim wraps
+`vim.api.nvim_set_keymap` and `vim.api.nvim_buf_set_keymap` and records
+every call. Mappings set before `track()` runs are not captured;
+Vimscript `:map` calls are not observed either (they take C paths this
+plugin cannot see).
+
+```lua
+-- init.lua, as early as possible:
+require("keymap-forensics").track()
+-- ...then load lazy.nvim / packer / plugins as usual
+```
+
+Example output:
+
+```
+:WhyKeyTrace <leader>ff
+<leader>ff (n mode) — 3 event(s) recorded
+
+  #1  winner      09:00:12
+      bound to:  <cmd>Telescope find_files<CR>
+      source:    lua/plugins/telescope.lua:42
+      desc:      Find files
+
+  #2  superseded  09:00:05
+      bound to:  :Files<CR>
+      source:    lua/config/keymaps.lua:12
+
+  #3  superseded  09:00:01
+      bound to:  <cmd>fzf-lua files<CR>
+      source:    lua/plugins/fzf.lua:8
+```
+
+Commands:
+
+```
+:WhyKeyTrace [<mode>] <lhs>    " print binding history for a key
+:WhyKeyTraceReset              " clear the trace log
+```
+
+Lua API:
+
+```lua
+require("keymap-forensics").track({ max_events = 50000 })  -- install shim
+require("keymap-forensics").untrack()                       -- restore vim.api; log preserved
+require("keymap-forensics").reset_trace()                   -- clear log
+```
+
+Default event cap is 50 000 (FIFO eviction past that). Pass
+`max_events = 0` to disable the cap.
 
 ## What it shows
 

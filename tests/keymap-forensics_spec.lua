@@ -124,4 +124,49 @@ describe("keymap-forensics", function()
 			assert.equals("<leader>f", n_mode.collisions[1].prefix.lhs)
 		end)
 	end)
+
+	describe("why_key_trace", function()
+		local mod
+		local trace
+
+		before_each(function()
+			package.loaded["keymap-forensics.trace"] = nil
+			package.loaded["keymap-forensics"] = nil
+			mod = require("keymap-forensics")
+			trace = require("keymap-forensics.trace")
+		end)
+
+		it("returns the raw history and prints the formatted trace", function()
+			-- Seed the trace log directly (bypasses install/uninstall so the
+			-- facade behaviour is tested without touching vim.api).
+			trace.record({ timestamp = 100, mode = "n", lhs = "<leader>x", rhs = "old" })
+			trace.record({ timestamp = 200, mode = "n", lhs = "<leader>x", rhs = "new" })
+
+			local history = mod.why_key_trace("<leader>x", "n")
+
+			assert.equals(2, #history)
+			-- Most-recent first.
+			assert.equals("new", history[1].rhs)
+			assert.equals("old", history[2].rhs)
+		end)
+
+		it("returns an empty list when the key has no recorded events", function()
+			local history = mod.why_key_trace("<leader>never-set", "n")
+			assert.equals(0, #history)
+		end)
+
+		it("defaults to normal mode when mode is omitted", function()
+			trace.record({ timestamp = 1, mode = "n", lhs = "<leader>x", rhs = "a" })
+			trace.record({ timestamp = 2, mode = "i", lhs = "<leader>x", rhs = "b" })
+			local history = mod.why_key_trace("<leader>x")
+			assert.equals(1, #history)
+			assert.equals("a", history[1].rhs)
+		end)
+
+		it("rejects an empty lhs at the boundary", function()
+			assert.has_error(function()
+				mod.why_key_trace("", "n")
+			end)
+		end)
+	end)
 end)

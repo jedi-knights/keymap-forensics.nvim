@@ -38,3 +38,25 @@ vim.api.nvim_create_user_command("WhyKeyConflicts", function()
 end, {
 	desc = "Report keymap prefix collisions across standard modes",
 })
+
+vim.api.nvim_create_user_command("WhyKeyTrace", function(opts)
+	local mode, lhs
+	if #opts.fargs == 1 then
+		mode, lhs = "n", opts.fargs[1]
+	elseif #opts.fargs == 2 then
+		mode, lhs = opts.fargs[1], opts.fargs[2]
+	else
+		vim.notify("WhyKeyTrace: expected [<mode>] <lhs>", vim.log.levels.ERROR)
+		return
+	end
+	require("keymap-forensics").why_key_trace(lhs, mode)
+end, {
+	nargs = "+",
+	desc = "Print historical bindings for a key (requires require('keymap-forensics').track())",
+})
+
+vim.api.nvim_create_user_command("WhyKeyTraceReset", function()
+	require("keymap-forensics").reset_trace()
+end, {
+	desc = "Clear the keymap-forensics trace event log",
+})

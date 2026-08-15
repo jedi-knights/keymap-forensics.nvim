@@ -37,6 +37,39 @@ function M.why_key_conflicts(deps)
 	return report
 end
 
+--- Install the trace shim. Idempotent. Call this early in init.lua to
+--- catch mappings registered by plugins that load after keymap-forensics.
+--- Mappings set before install() runs are NOT captured — the shim can
+--- only observe what passes through Lua-side vim.api after it's in place.
+--- @param opts table? { max_events = integer }  0 means unbounded
+function M.track(opts)
+	opts = opts or {}
+	require("keymap-forensics.trace").install({ max_events = opts.max_events })
+end
+
+--- Uninstall the trace shim. The event log is preserved so `:WhyKeyTrace`
+--- keeps working against what was captured while tracking was on.
+function M.untrack()
+	require("keymap-forensics.trace").uninstall()
+end
+
+--- Clear the trace event log. Shim install state is unaffected.
+function M.reset_trace()
+	require("keymap-forensics.trace").reset()
+end
+
+--- Print the full binding history for a key.
+--- @param lhs string
+--- @param mode string? Defaults to "n".
+--- @return table history — most-recent first.
+function M.why_key_trace(lhs, mode)
+	assert(type(lhs) == "string" and #lhs > 0, "why_key_trace: lhs required")
+	mode = mode or "n"
+	local history = require("keymap-forensics.trace").history(lhs, mode)
+	print(format.render_trace(history, lhs, mode))
+	return history
+end
+
 --- Optional setup for opts + DI parity with the scaffold. The plugin
 --- registers commands at load time; users may skip setup entirely.
 --- @param opts table?

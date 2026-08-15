@@ -124,4 +124,81 @@ function M.render_conflicts(report)
 	return table.concat(out, "\n")
 end
 
+--- Format a single trace event's timestamp. os.date-friendly, HH:MM:SS.
+local function fmt_time(ts)
+	if type(ts) ~= "number" then
+		return "??:??:??"
+	end
+	return os.date("%H:%M:%S", ts)
+end
+
+--- Render one trace event as an indented multi-line block. Index is the
+--- 1-based position in the history list (index=1 is the winner).
+local function render_trace_event(event, index, total)
+	local label = index == 1 and "winner" or "superseded"
+	local lines = {
+		string.format("  #%d  %-10s  %s", index, label, fmt_time(event.timestamp)),
+	}
+
+	if event.has_callback then
+		local body = "<lua callback>"
+		if event.callback_source then
+			body =
+				string.format("<lua callback @ %s:%d>", event.callback_source.source, event.callback_source.linedefined)
+		end
+		table.insert(lines, "      bound to:  " .. body)
+	else
+		table.insert(lines, "      bound to:  " .. (event.rhs or "<nil>"))
+	end
+
+	if event.caller and event.caller.source then
+		table.insert(lines, string.format("      source:    %s:%d", event.caller.source, event.caller.line or 0))
+	end
+
+	if event.opts and event.opts.desc and event.opts.desc ~= "" then
+		table.insert(lines, "      desc:      " .. event.opts.desc)
+	end
+
+	if event.buffer_local then
+		table.insert(lines, "      scope:     buffer-local")
+	end
+
+	-- Suppress the trailing blank line on the last entry so callers can
+	-- render_trace() straight into :messages without an ugly extra newline.
+	if index < total then
+		table.insert(lines, "")
+	end
+
+	return table.concat(lines, "\n")
+end
+
+--- Render a trace history (from `trace.history(lhs, mode)`) as a multi-line
+--- string. Empty history returns an actionable message that names the fix.
+--- @param history table[] Most-recent-first list of events.
+--- @param lhs string
+--- @param mode string
+--- @return string
+function M.render_trace(history, lhs, mode)
+	assert(type(history) == "table", "format.render_trace: history must be a table")
+	assert(type(lhs) == "string" and #lhs > 0, "format.render_trace: lhs required")
+	assert(type(mode) == "string" and #mode > 0, "format.render_trace: mode required")
+
+	if #history == 0 then
+		return string.format(
+			"no events recorded for %s (%s mode) — did require('keymap-forensics').track() run before the mapping was set?",
+			lhs,
+			mode
+		)
+	end
+
+	local out = {
+		string.format("%s (%s mode) — %d event(s) recorded", lhs, mode, #history),
+		"",
+	}
+	for i, event in ipairs(history) do
+		out[#out + 1] = render_trace_event(event, i, #history)
+	end
+	return table.concat(out, "\n")
+end
+
 return M
