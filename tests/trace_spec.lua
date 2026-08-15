@@ -200,7 +200,7 @@ describe("keymap-forensics.trace", function()
 			-- The second install must NOT re-wrap over our own wrapper.
 			assert.equals(wrapped_once, api.nvim_set_keymap)
 			-- And the original is still what we captured.
-			assert.is_not.equal(original_set, api.nvim_set_keymap)
+			assert.not_equals(original_set, api.nvim_set_keymap)
 		end)
 
 		it("returns true from installed() after install", function()
