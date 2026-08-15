@@ -9,6 +9,7 @@ CONTENTS                                          *keymap-forensics-contents*
   1. Introduction ................ |keymap-forensics-intro|
   2. Commands .................... |keymap-forensics-commands|
      2.1. :WhyKey ................ |:WhyKey|
+     2.2. :WhyKeyConflicts ....... |:WhyKeyConflicts|
   3. Output shape ................ |keymap-forensics-output|
   4. API ......................... |keymap-forensics-api|
   5. Health ...................... |keymap-forensics-health|
@@ -39,6 +40,34 @@ formatted attribution to |:messages|. Valid modes: `n`, `i`, `v`, `x`,
 
 Prints `no mapping` when {lhs} has no mapping in {mode}.
 
+------------------------------------------------------------------------------
+2.2. :WhyKeyConflicts                                       *:WhyKeyConflicts*
+
+>
+    :WhyKeyConflicts
+<
+Report every keymap prefix collision across standard modes. A
+collision is a mapping whose lhs is a strict prefix of another
+mapping in the same mode — pressing the prefix triggers it
+immediately (or after 'timeoutlen'), blocking the longer sequences.
+
+Namespace-style prefixes that are themselves unbound (Vim's `g`
+group, for example) are excluded. Only mappings the user has actually
+bound show up as shadowing prefixes.
+
+Example: >
+    Prefix conflicts (n mode):
+      <leader>f  blocks 2 longer sequence(s):
+        <leader>f    :Files<CR>              (config/keymaps.lua:12)
+        <leader>ff   :Telescope find_files   (plugins/telescope.lua:42)
+        <leader>fg   :Telescope live_grep    (plugins/telescope.lua:43)
+
+    Prefix conflicts (i mode):
+      none
+
+    Scanned 187 mappings across 7 modes.
+<
+
 ==============================================================================
 3. Output shape                                     *keymap-forensics-output*
 
@@ -64,13 +93,17 @@ Submodules (`require("keymap-forensics.<name>")`):
 
 - `attribution` — `attribute(lhs, mode, deps?)` returns the record
                   shape shown above. Pure; injectable deps for tests.
-- `format`      — `render(record)` returns the formatted string.
+- `conflicts`   — `find(deps?)` returns a per-mode prefix-collision
+                  report. Pure; injectable deps for tests.
+- `format`      — `render(record)` and `render_conflicts(report)`.
 - `health`      — |:checkhealth| entry point.
 
 Facade (`require("keymap-forensics")`):
 
-- `why_key(lhs, mode?, deps?)` — attributes and prints. Returns the
-                                 raw record so callers can pipe it.
+- `why_key(lhs, mode?, deps?)`     — attribute + print. Returns the
+                                      raw record so callers can pipe it.
+- `why_key_conflicts(deps?)`       — scan + print. Returns the raw
+                                      conflicts report.
 
 ==============================================================================
 5. Health                                           *keymap-forensics-health*

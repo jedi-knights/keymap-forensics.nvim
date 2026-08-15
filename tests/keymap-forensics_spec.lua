@@ -83,4 +83,45 @@ describe("keymap-forensics", function()
 			end)
 		end)
 	end)
+
+	describe("why_key_conflicts", function()
+		local mod
+
+		before_each(function()
+			package.loaded["keymap-forensics"] = nil
+			package.loaded["keymap-forensics.conflicts"] = nil
+			mod = require("keymap-forensics")
+		end)
+
+		it("returns the raw report and prints the formatted rendering", function()
+			local deps = {
+				get_keymap = function(mode)
+					if mode == "n" then
+						return {
+							{ lhs = "<leader>f", rhs = ":Files<CR>", sid = 5, lnum = 12 },
+							{ lhs = "<leader>ff", rhs = ":Telescope find_files<CR>", sid = 7, lnum = 42 },
+						}
+					end
+					return {}
+				end,
+				resolve_script_name = function(sid)
+					return ({ [5] = "config/keymaps.lua", [7] = "plugins/telescope.lua" })[sid]
+				end,
+			}
+
+			local report = mod.why_key_conflicts(deps)
+
+			assert.equals(2, report.scanned)
+			assert.equals(7, #report.modes)
+			-- The n-mode collision should surface at index 1 of that mode's list.
+			local n_mode
+			for _, m in ipairs(report.modes) do
+				if m.mode == "n" then
+					n_mode = m
+				end
+			end
+			assert.equals(1, #n_mode.collisions)
+			assert.equals("<leader>f", n_mode.collisions[1].prefix.lhs)
+		end)
+	end)
 end)

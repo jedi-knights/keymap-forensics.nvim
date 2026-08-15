@@ -104,4 +104,111 @@ describe("keymap-forensics.format", function()
 			format.render("not a table")
 		end)
 	end)
+
+	describe("render_conflicts", function()
+		it("returns 'no conflicts report' for nil input", function()
+			assert.equals("no conflicts report", format.render_conflicts(nil))
+		end)
+
+		it("rejects a non-nil, non-table report", function()
+			assert.has_error(function()
+				format.render_conflicts("not a table")
+			end)
+		end)
+
+		it("emits a per-mode header even when a mode has no collisions", function()
+			local out = format.render_conflicts({
+				scanned = 0,
+				modes = {
+					{ mode = "n", collisions = {} },
+					{ mode = "i", collisions = {} },
+				},
+			})
+			-- Both headers must appear so the reader can see the mode
+			-- was inspected. "(none)" body proves nothing was silently
+			-- filtered out.
+			assert.is_truthy(out:match("Prefix conflicts %(n mode%):"))
+			assert.is_truthy(out:match("Prefix conflicts %(i mode%):"))
+			assert.is_truthy(out:match("  none"))
+		end)
+
+		it("renders a collision with prefix line and shadowed lines", function()
+			local out = format.render_conflicts({
+				scanned = 2,
+				modes = {
+					{
+						mode = "n",
+						collisions = {
+							{
+								prefix = {
+									lhs = "<leader>f",
+									rhs = ":Files<CR>",
+									callback = false,
+									source = { name = "config/keymaps.lua", line = 12, sid = 5 },
+								},
+								shadowed = {
+									{
+										lhs = "<leader>ff",
+										rhs = "<cmd>Telescope find_files<CR>",
+										callback = false,
+										source = { name = "plugins/telescope.lua", line = 42, sid = 7 },
+									},
+								},
+							},
+						},
+					},
+				},
+			})
+
+			assert.is_truthy(out:match("<leader>f  blocks 1 longer sequence%(s%):"))
+			-- Prefix line rendered first, with source in parens.
+			assert.is_truthy(out:match("<leader>f%s+:Files<CR>%s+%(config/keymaps%.lua:12%)"))
+			-- Then the shadowed line.
+			assert.is_truthy(out:match("<leader>ff%s+<cmd>Telescope find_files<CR>%s+%(plugins/telescope%.lua:42%)"))
+		end)
+
+		it("renders a callback-backed entry as <lua callback>", function()
+			local out = format.render_conflicts({
+				scanned = 2,
+				modes = {
+					{
+						mode = "n",
+						collisions = {
+							{
+								prefix = { lhs = "x", callback = true },
+								shadowed = { { lhs = "xy", rhs = "y", callback = false } },
+							},
+						},
+					},
+				},
+			})
+			assert.is_truthy(out:match("x%s+<lua callback>"))
+		end)
+
+		it("falls back to 'script id N' when the source name is unresolved", function()
+			local out = format.render_conflicts({
+				scanned = 2,
+				modes = {
+					{
+						mode = "n",
+						collisions = {
+							{
+								prefix = { lhs = "x", rhs = "1", source = { sid = 99 } },
+								shadowed = { { lhs = "xy", rhs = "2", source = { sid = 99 } } },
+							},
+						},
+					},
+				},
+			})
+			assert.is_truthy(out:match("%(script id 99%)"))
+		end)
+
+		it("closes with a scan summary line", function()
+			local out = format.render_conflicts({
+				scanned = 42,
+				modes = { { mode = "n", collisions = {} } },
+			})
+			assert.is_truthy(out:match("Scanned 42 mappings across 1 modes%."))
+		end)
+	end)
 end)

@@ -20,6 +20,10 @@ No `setup()` call required — the `:WhyKey` command is registered by
 
 ## Usage
 
+### `:WhyKey [<mode>] <lhs>`
+
+Diagnose one key.
+
 ```
 :WhyKey <lhs>              " default: normal mode
 :WhyKey <mode> <lhs>       " explicit mode: n | i | v | x | o | c | t
@@ -37,6 +41,32 @@ Example output:
 
 If the key has no mapping in the requested mode, `:WhyKey` prints
 `no mapping`.
+
+### `:WhyKeyConflicts`
+
+Report every keymap prefix collision across standard modes. A "conflict"
+is a mapping whose lhs is a strict prefix of another mapping in the
+same mode — pressing the prefix triggers it immediately (or after
+`timeoutlen`), blocking the longer sequences. Namespace-style prefixes
+that are themselves unbound (Vim's `g` group, for example) are excluded.
+
+Example output:
+
+```
+:WhyKeyConflicts
+Prefix conflicts (n mode):
+  <leader>f  blocks 2 longer sequence(s):
+    <leader>f    :Files<CR>              (lua/config/keymaps.lua:12)
+    <leader>ff   :Telescope find_files   (lua/plugins/telescope.lua:42)
+    <leader>fg   :Telescope live_grep    (lua/plugins/telescope.lua:43)
+
+Prefix conflicts (i mode):
+  none
+
+...
+
+Scanned 187 mappings across 7 modes.
+```
 
 ## What it shows
 
