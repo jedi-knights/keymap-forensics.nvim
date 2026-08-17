@@ -158,6 +158,20 @@ For any bound key:
 Run `:checkhealth keymap-forensics` to verify your Neovim supports
 source-path resolution.
 
+## Development
+
+```sh
+make lint            # stylua --check .
+make test            # plenary-busted headless
+make lazyvim-smoke   # bootstrap isolated LazyVim + :WhyKey <leader>ff
+```
+
+`make lazyvim-smoke` fulfills the v0.1.0 ship criterion: it clones
+LazyVim starter into a redirected-XDG tempdir, runs `Lazy! sync` to
+install all default plugins, then runs `:WhyKey <leader>ff` against
+the stock keymap and asserts the attribution record is well-shaped.
+Takes ~30s cold; set `KF_SMOKE_TMPDIR` to reuse a persistent bootstrap.
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).
